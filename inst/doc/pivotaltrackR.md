@@ -1,0 +1,155 @@
+---
+title: "Viewing and Managing Pivotal Tracker Stories"
+description: "An overview of using 'pivotaltrackR' to communicate with the Pivotal Tracker API."
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Viewing and Managing Pivotal Tracker Stories}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+
+[Pivotal Tracker](https://www.pivotaltracker.com) is a project management software-as-a-service that provides a [REST API](https://www.pivotaltracker.com/help/api/rest/v5). `pivotaltrackR` provides an R interface to that API, allowing you to query it and work with its responses. This vignette offers a quick-start guide to working with Stories, the issues that Pivotal Tracker helps you track.
+
+## Setup
+
+You'll need two settings to start working with Pivotal Tracker in R. First, you'll need the project ID, which you can find in the URL you see in the web browser when you're using the Pivotal Tracker web app, such as `https://www.pivotaltracker.com/n/projects/995640`.
+
+
+```r
+options(pivotal.project=995640)
+```
+
+Second, unless you're looking at a public project, you'll need an [API token](https://www.pivotaltracker.com/help/articles/api_token/), which you can get at the bottom of your [Profile](https://www.pivotaltracker.com/profile) page.
+
+```r
+options(pivotal.token="REDACTED")
+```
+
+Set these options in your current R session like this, or put that in your `.Rprofile` for use in every session.
+
+## Querying Stories
+
+Let's get started. First, load the package.
+
+
+```r
+library(pivotaltrackR)
+```
+
+"Stories" are the primary objects that you work with in Pivotal Tracker. They're the issues---features, bugs, and chores---that you track. They have a life cycle, in which they are created, may linger in the "icebox" waiting to be scheduled to the "backlog", and once started, go through some stages before they are finally "accepted" as done.
+
+The Pivotal API lets you query your project's stories freely. The easiest way is to use the same searching interface you use in the web application. There are lots of different fields to filter on and ways to select certain stories; these are covered at length on the [API documentation](https://www.pivotaltracker.com/help/articles/advanced_search/).
+
+Let's find all of the open bug reports in our project.
+
+
+```r
+bugs <- getStories(story_type="bug")
+bugs
+```
+
+```
+##    kind       id                  name current_state
+## 1 story 64068426        Finished Story      finished
+## 2 story 64068314 Unstarted Story (Bug)     unstarted
+```
+
+Hooray, only two bugs! However, note that if you made a search that did have lots of results, `getStories()` handles the API's pagination for you. It will return all search matches, even if it needs multiple API requests to do it. You don't need to worry with the details of the API for that.
+
+## Creating stories
+
+Let's say that I need to report a bug. Call `createStory()` and give it some details.
+
+
+
+
+```r
+new_bug <- createStory(
+    name="Flux capacitor hangs at 0.9 gigawatts",
+    description="Everything seems fine up to then but then it gets stuck. Please investigate and fix.",
+    story_type="bug"
+)
+new_bug
+```
+
+```
+## List of 13
+##  $ kind           : chr "story"
+##  $ id             : int 154237097
+##  $ project_id     : int 123
+##  $ name           : chr "Flux capacitor hangs at 0.9 gigawatts"
+##  $ description    : chr "Everything seems fine up to then but then it gets stuck. Please investigate and fix."
+##  $ story_type     : chr "bug"
+##  $ current_state  : chr "unscheduled"
+##  $ requested_by_id: int 1143238
+##  $ owner_ids      : list()
+##  $ labels         : list()
+##  $ created_at     : chr "2018-01-11T05:48:16Z"
+##  $ updated_at     : chr "2018-01-11T05:48:16Z"
+##  $ url            : chr "https://www.pivotaltracker.com/story/show/154237097"
+##  - attr(*, "class")= chr "story"
+## NULL
+```
+
+
+
+See the [API docs](https://www.pivotaltracker.com/help/api/rest/v5#projects_project_id_stories_post) for a list of all valid fields you can provide. `name` is the only required field.
+
+Now when we query our bugs again, we see our newly reported one added to the list.
+
+
+```r
+getStories(story_type="bug")
+```
+
+```
+##    kind        id                                  name current_state
+## 1 story  64068426                        Finished Story      finished
+## 2 story  64068314                 Unstarted Story (Bug)     unstarted
+## 3 story 154237097 Flux capacitor hangs at 0.9 gigawatts   unscheduled
+```
+
+## Modifying stories
+
+Time to get cracking on this bug. Let's mark it as started:
+
+
+
+
+```r
+new_bug <- editStory(new_bug, current_state="started")
+getStories(story_type="bug")
+```
+
+```
+##    kind        id                                  name current_state
+## 1 story  64068426                        Finished Story      finished
+## 2 story 154237097 Flux capacitor hangs at 0.9 gigawatts       started
+## 3 story  64068314                 Unstarted Story (Bug)     unstarted
+```
+
+As we see, the change is reflected in our story search, and in fact our bug has moved up in the order. Started issues always are listed above unstarted ones, which themselves are ahead of unscheduled ones.
+
+## Deleting stories
+
+Oops! Turns out that this new bug report is a duplicate of one of the stories we already had. Let's delete it.
+
+
+
+
+```r
+deleteStory(new_bug)
+getStories(story_type="bug")
+```
+
+```
+##    kind       id                  name current_state
+## 1 story 64068426        Finished Story      finished
+## 2 story 64068314 Unstarted Story (Bug)     unstarted
+```
+
+Now our bug is no longer in the list.
+
+
