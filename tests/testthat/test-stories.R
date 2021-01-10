@@ -42,7 +42,7 @@ without_internet({
 })
 
 public({
-    with_mock_API({
+    with_mock_api({
         s <- getStories(search="mnt")
         test_that("The stories response and as.data.frame", {
             expect_length(s, 4)
@@ -62,10 +62,13 @@ public({
             expect_output(print(s))
         })
 
-        test_that("Extract method for stories", {
-            s <- getStories(search="mnt")
+        test_that("Subset method for stories", {
             expect_length(s, 4)
             expect_length(s[2:3], 2)
+            expect_is(s[2:3], "stories")
+        })
+        test_that("Extract method for stories", {
+            expect_is(s[[2]], "story")
         })
 
         test_that("Bad request error handling", {
